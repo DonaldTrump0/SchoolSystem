@@ -514,3 +514,9 @@ void CSchoolSystemDlg::OnBnClickedButtonUnionSelect()
 {
 	
 }
+
+
+void CSchoolSystemDlg::OnOK()
+{
+	//CDialogEx::OnOK();
+}

@@ -38,4 +38,5 @@ public:
 	afx_msg void OnBnClickedButtonUpdate();
 	afx_msg void OnBnClickedButtonSelect();
 	afx_msg void OnBnClickedButtonUnionSelect();
+	virtual void OnOK();
 };

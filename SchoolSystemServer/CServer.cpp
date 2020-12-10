@@ -1,6 +1,6 @@
 #include "CServer.h"
 
-int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
+int main()
 {
     CServer server;
     return 0;

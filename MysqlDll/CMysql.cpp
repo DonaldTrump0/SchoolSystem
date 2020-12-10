@@ -3,7 +3,7 @@
 
 void OutputDebugPrintf(const char* strOutputString, ...)
 {
-    char strBuffer[4096] = { 0 };
+    char strBuffer[256] = { 0 };
     va_list vlArgs;
     va_start(vlArgs, strOutputString);
     vsprintf(strBuffer, strOutputString, vlArgs);

@@ -20,7 +20,7 @@ class TCPSOCKETDLL_API CTcpSocket
 {
 public:
     bool Listen(const char* szIp, short nPort); // 监听，服务端调用
-    sockaddr Accept();                          // 接受连接，服务端调用
+    //sockaddr Accept();                          // 接受连接，服务端调用
     bool Connect(sockaddr addr);                // 发起连接，客户端调用
     sockaddr Select();
     void UnSelect(sockaddr addr);

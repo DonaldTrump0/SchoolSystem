@@ -42,17 +42,17 @@ bool CTcpSocket::Listen(const char* szIp, short nPort)
     return true;
 }
 
-sockaddr CTcpSocket::Accept()
-{
-    m_connectSem.WaitForSem();
-
-    m_connectListLock.Lock();
-    sockaddr addr = m_connectList.front();
-    m_connectList.erase(m_connectList.begin());
-    m_connectListLock.UnLock();
-
-    return addr;
-}
+//sockaddr CTcpSocket::Accept()
+//{
+//    m_connectSem.WaitForSem();
+//
+//    m_connectListLock.Lock();
+//    sockaddr addr = m_connectList.front();
+//    m_connectList.erase(m_connectList.begin());
+//    m_connectListLock.UnLock();
+//
+//    return addr;
+//}
 
 bool CTcpSocket::Connect(sockaddr addr)
 {
