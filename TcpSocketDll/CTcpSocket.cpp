@@ -2,141 +2,14 @@
 #include <stdio.h>
 #include <time.h>
 
-void PrintErrMsg(const char* szPreMsg)
+void PrintErrMsg(const char* pPreMsg)
 {
     char errMsg[256] = { 0 };
     char buf[256] = { 0 };
     FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), 0, errMsg, sizeof(errMsg), 0);
-    sprintf(buf, "%s: %s\r\n", szPreMsg, errMsg);
+    sprintf(buf, "%s: %s\r\n", pPreMsg, errMsg);
     OutputDebugString(buf);
-}
-
-bool CTcpSocket::Listen(const char* szIp, short nPort)
-{
-    m_bServer = true;
-
-    // 初始化套接字(使用UDP协议)
-    m_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (INVALID_SOCKET == m_socket)
-    {
-        PrintErrMsg("socket init");
-        return false;
-    }
-
-    // 初始化本机IP和端口
-    sockaddr_in serverAddr = { 0 };
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(nPort);
-    inet_pton(AF_INET, szIp, &serverAddr.sin_addr);
-
-    // 绑定端口
-    if (SOCKET_ERROR == bind(m_socket, (sockaddr*)&serverAddr, sizeof(serverAddr)))
-    {
-        PrintErrMsg("bind");
-        return false;
-    }
-
-    CreateThread(0, 0, SendThreadProc, this, 0, 0);
-    CreateThread(0, 0, RecvThreadProc, this, 0, 0);
-
-    return true;
-}
-
-//sockaddr CTcpSocket::Accept()
-//{
-//    m_connectSem.WaitForSem();
-//
-//    m_connectListLock.Lock();
-//    sockaddr addr = m_connectList.front();
-//    m_connectList.erase(m_connectList.begin());
-//    m_connectListLock.UnLock();
-//
-//    return addr;
-//}
-
-bool CTcpSocket::Connect(sockaddr addr)
-{
-    m_bServer = false;
-    Conn& conn = m_connectMap[addr];
-    conn.m_nNextSendSeq = 0;
-
-    // 初始化套接字(使用UDP协议)
-    m_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (INVALID_SOCKET == m_socket)
-    {
-        PrintErrMsg("socket init");
-        return false;
-    }
-
-    // 发送客户端连接包，加入待发包链表
-    Packet sendPkg(ESTABLISH, conn.m_nNextSendSeq++);
-    if (SOCKET_ERROR == sendto(m_socket, (char*)&sendPkg, sizeof(Packet), 0, &addr, sizeof(sockaddr)))
-    {
-        PrintErrMsg("sendto");
-        return 0;
-    }
-    m_sendList.push_back(SendListNode(clock(), addr, &sendPkg));
-
-    CreateThread(0, 0, SendThreadProc, this, 0, 0);
-
-    // 接收服务端连接包
-    Packet recvPkg;
-    sockaddr fromaddr = { 0 };
-    int nLen = sizeof(fromaddr);
-    if (SOCKET_ERROR == recvfrom(m_socket, (char*)&recvPkg, sizeof(recvPkg), 0, &fromaddr, &nLen))
-    {
-        PrintErrMsg("recvfrom");
-        return false;
-    }
-    conn.m_nNextRecvSeq = recvPkg.m_nSeq + 1;
-    // 清空待发送链表
-    m_sendListLock.Lock();
-    m_sendList.clear();
-    m_sendListLock.UnLock();
-
-    // 发送确认包
-    Packet AckPkg(ACK, recvPkg.m_nSeq);
-    if (SOCKET_ERROR == sendto(m_socket, (char*)&AckPkg, sizeof(AckPkg), 0, &addr, sizeof(addr)))
-    {
-        PrintErrMsg("sendto");
-        return false;
-    }
-
-    CreateThread(0, 0, RecvThreadProc, this, 0, 0);
-
-    return true;
-}
-
-sockaddr CTcpSocket::Select()
-{
-    while (true)
-    {
-        for (auto& p : m_connectMap)
-        {
-            if (1 == p.second.m_nStatus)
-            {
-                p.second.m_nStatus = 2;
-                return p.first;
-            }
-        }
-        Sleep(20);
-    }
-}
-
-void CTcpSocket::UnSelect(sockaddr addr)
-{
-    Conn& conn = m_connectMap[addr];
-
-    conn.m_statusLock.Lock();
-    if (0 != conn.m_byteStream.GetSize())
-    {
-        conn.m_nStatus = 1;
-    }
-    else
-    {
-        conn.m_nStatus = 0;
-    }
-    conn.m_statusLock.UnLock();
+    printf("%s", buf);
 }
 
 int CTcpSocket::Send(sockaddr addr, const char* pBuf, int nLen)
@@ -192,11 +65,12 @@ DWORD WINAPI CTcpSocket::SendThreadProc(LPVOID lpParam)
         for (SendListNode& n : pThis->m_sendList)
         {
             // 发送新加入链表的包，重发超时包
-            if ((n.m_time == 0) || (clock() - n.m_time >= 200))
+            if ((n.m_time == 0) || (clock() - n.m_time >= 1000))
             {
                 switch (n.m_packet->m_nType)
                 {
-                case ESTABLISH:
+                case ESTABLISH_1:
+                case ESTABLISH_2:
                 {
                     if (SOCKET_ERROR == sendto(pThis->m_socket, (char*)n.m_packet, 
                         sizeof(Packet), 0, &n.m_addr, sizeof(sockaddr)))
@@ -216,8 +90,6 @@ DWORD WINAPI CTcpSocket::SendThreadProc(LPVOID lpParam)
                     }
                     break;
                 }
-                default:
-                    break;
                 }
                 // 更新时间
                 n.m_time = clock();
@@ -250,34 +122,34 @@ DWORD WINAPI CTcpSocket::RecvThreadProc(LPVOID lpParam)
 
         switch (packet->m_nType)
         {
-        case ESTABLISH:
+        // 服务端接收第一次握手
+        case ESTABLISH_1:
         {
-            if (pThis->m_bServer)
+            // 初始化连接信息
+            conn.m_nNextSendSeq = 0;
+            conn.m_nNextRecvSeq = packet->m_nSeq + 1;
+
+            // 将要发送的第二次握手加入待发送链表
+            Packet* p = new Packet(ESTABLISH_2, conn.m_nNextSendSeq++);
+            pThis->m_sendListLock.Lock();
+            pThis->m_sendList.push_back(SendListNode(0, fromAddr, p));
+            pThis->m_sendListLock.UnLock();
+
+            delete packet;
+            break;
+        }
+        // 客户端接收第二次握手
+        case ESTABLISH_2:
+        {
+            // 发送确认包
+            Packet ackPkt(ACK, packet->m_nSeq);
+            if (SOCKET_ERROR == sendto(pThis->m_socket, (char*)&ackPkt, sizeof(ackPkt), 0, &fromAddr, sizeof(sockaddr)))
             {
-                // 接收第一次握手，初始化
-                conn.m_nNextSendSeq = 0;
-                conn.m_nNextRecvSeq = packet->m_nSeq + 1;
-
-                // 将要发送的第二次握手加入待发送链表
-                Packet* p = new Packet(ESTABLISH, conn.m_nNextSendSeq++);
-                pThis->m_sendListLock.Lock();
-                pThis->m_sendList.push_back(SendListNode(0, fromAddr, p));
-                pThis->m_sendListLock.UnLock();
-
-                delete packet;
+                PrintErrMsg("sendto");
+                return 0;
             }
-            else
-            {
-                // 第三次握手，发送确认包
-                Packet ackPkt(ACK, packet->m_nSeq);
-                if (SOCKET_ERROR == sendto(pThis->m_socket, (char*)&ackPkt, sizeof(ackPkt), 0, &fromAddr, sizeof(sockaddr)))
-                {
-                    PrintErrMsg("sendto");
-                    return 0;
-                }
 
-                delete packet;
-            }
+            delete packet;
             break;
         }
         case DATA:
@@ -361,15 +233,6 @@ DWORD WINAPI CTcpSocket::RecvThreadProc(LPVOID lpParam)
             {
                 if (it->m_packet->m_nSeq == packet->m_nSeq)
                 {
-                    // 服务端收到第三次握手
-                    if (packet->m_nSeq == 0)
-                    {
-                        pThis->m_connectListLock.Lock();
-                        pThis->m_connectList.push_back(fromAddr);
-                        pThis->m_connectListLock.UnLock();
-                        pThis->m_connectSem.ReleaseSem();
-                    }
-
                     delete it->m_packet;
                     pThis->m_sendList.erase(it);
                     break;
@@ -380,12 +243,12 @@ DWORD WINAPI CTcpSocket::RecvThreadProc(LPVOID lpParam)
             delete packet;
             break;
         }
-        case FIN:
+        /*case FIN:
         {
 
             delete packet;
             break;
-        }
+        }*/
         }
     }
 

@@ -16,13 +16,13 @@ CServer::CServer()
 
     while (true)
     {
-        sockaddr addr = m_tcpSocket.Select();
+        sockaddr addr = m_tcpServer.Select();
 
         int nLen = 0;
-        m_tcpSocket.Recv(addr, (char*)&nLen, sizeof(nLen));
+        m_tcpServer.Recv(addr, (char*)&nLen, sizeof(nLen));
 
         char buf[0x1000] = { 0 };
-        m_tcpSocket.Recv(addr, buf, nLen);
+        m_tcpServer.Recv(addr, buf, nLen);
 
         m_threadPool.AddTask(new CSqlTask(this, addr, string(buf)));
     }
@@ -43,7 +43,7 @@ bool CServer::Init()
     }
 
     // 初始化socket等待连接
-    if (!m_tcpSocket.Listen("127.0.0.1", 5566))
+    if (!m_tcpServer.Listen("127.0.0.1", 5566))
     {
         return false;
     }
@@ -67,8 +67,8 @@ void CServer::SendResByteAry(MYSQL_RES* res, sockaddr addr)
 
     // 发送字段
     int nLen = p - buf;
-    m_tcpSocket.Send(addr, (char*)&nLen, sizeof(nLen));
-    m_tcpSocket.Send(addr, buf, nLen);
+    m_tcpServer.Send(addr, (char*)&nLen, sizeof(nLen));
+    m_tcpServer.Send(addr, buf, nLen);
 
     p = buf;
 
@@ -86,8 +86,8 @@ void CServer::SendResByteAry(MYSQL_RES* res, sockaddr addr)
 
     // 发送数据
     nLen = p - buf;
-    m_tcpSocket.Send(addr, (char*)&nLen, sizeof(nLen));
-    m_tcpSocket.Send(addr, buf, nLen);
+    m_tcpServer.Send(addr, (char*)&nLen, sizeof(nLen));
+    m_tcpServer.Send(addr, buf, nLen);
 }
 
 // 如果表不存在，则创建表
@@ -165,7 +165,7 @@ int CSqlTask::Execute()
     if (NULL == res)
     {
         // 发送insert, delete, update影响的行数
-        m_pServer->m_tcpSocket.Send(m_addr, (char*)&nRet, sizeof(nRet));
+        m_pServer->m_tcpServer.Send(m_addr, (char*)&nRet, sizeof(nRet));
     }
     else
     {
@@ -173,7 +173,7 @@ int CSqlTask::Execute()
         m_pServer->SendResByteAry(res, m_addr);
     }
 
-    m_pServer->m_tcpSocket.UnSelect(m_addr);
+    m_pServer->m_tcpServer.UnSelect(m_addr);
 
     return 0;
 }

@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <map>
-#include "../TcpSocketDll/CTcpSocket.h"
+#include "../TcpSocketDll/CTcpClient.h"
 #pragma comment(lib, "../Debug/TcpSocketDll.lib")
 using namespace std;
 
@@ -23,7 +23,7 @@ public:
 	CTabCtrl m_tab;
 	CListCtrl m_list;
 	int m_nCurTabSel;
-	CTcpSocket m_tcpSocket;
+	CTcpClient m_tcpClient;
 	sockaddr m_addr;
 	map<string, string> m_fieldMap;	// ±í×Ö¶ÎÓ³Éä
 

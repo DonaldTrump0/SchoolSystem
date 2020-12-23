@@ -10,36 +10,33 @@
 #include <ws2tcpip.h>
 #include "CByteStream.h"
 #include "CLock.h"
-#include "CSem.h"
 using namespace std;
 
 // 一个包携带的最大字节数
 #define DATA_LEN 1024
 
+// 打印错误信息
+void PrintErrMsg(const char* pPreMsg);
+
 class TCPSOCKETDLL_API CTcpSocket
 {
 public:
-    bool Listen(const char* szIp, short nPort); // 监听，服务端调用
-    //sockaddr Accept();                          // 接受连接，服务端调用
-    bool Connect(sockaddr addr);                // 发起连接，客户端调用
-    sockaddr Select();
-    void UnSelect(sockaddr addr);
     int Send(sockaddr addr, const char* pBuf, int nLen);
     int Recv(sockaddr addr, char* pBuf, int nBufLen);
+    //bool Close();
 
-    bool Close();
-
-private:
+public:
     static DWORD WINAPI SendThreadProc(LPVOID lpParam); // 发送数据的线程函数
     static DWORD WINAPI RecvThreadProc(LPVOID lpParam); // 接收数据的线程函数
 
-private:
+public:
     enum PackageType
     {
-        ESTABLISH,  // 三次握手
-        DATA,       // 数据包
-        ACK,        // 确认包
-        FIN         // 四次挥手
+        ESTABLISH_1,    // 客户端发起的第一次握手
+        ESTABLISH_2,    // 服务端发起的第二次握手
+        DATA,           // 数据包
+        ACK,            // 确认包
+        //FIN             // 四次挥手
     };
 
     struct Packet
@@ -110,17 +107,9 @@ private:
         }
     };
 
-
-private:
+public:
     SOCKET m_socket;
-    bool m_bServer;                             // 是否为服务端
-
     map<sockaddr, Conn, Compare> m_connectMap;  // 客户端连接信息
-
     list<SendListNode> m_sendList;              // 待发包链表
     CLock m_sendListLock;                       // 待发包链表锁
-
-    list<sockaddr> m_connectList;               // 待获取的连接
-    CLock m_connectListLock;                    // 待获取的连接锁
-    CSem m_connectSem;                          // 待获取的连接数
 };

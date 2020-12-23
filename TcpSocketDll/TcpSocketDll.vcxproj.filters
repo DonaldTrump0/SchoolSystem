@@ -27,7 +27,10 @@
     <ClInclude Include="CTcpSocket.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CSem.h">
+    <ClInclude Include="CTcpServer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CTcpClient.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -44,7 +47,10 @@
     <ClCompile Include="CTcpSocket.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CSem.cpp">
+    <ClCompile Include="CTcpServer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CTcpClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

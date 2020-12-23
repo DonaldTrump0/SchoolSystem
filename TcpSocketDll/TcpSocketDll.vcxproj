@@ -158,14 +158,16 @@
     <ClInclude Include="CByteStream.h" />
     <ClInclude Include="CInitSocketLib.h" />
     <ClInclude Include="CLock.h" />
-    <ClInclude Include="CSem.h" />
+    <ClInclude Include="CTcpClient.h" />
+    <ClInclude Include="CTcpServer.h" />
     <ClInclude Include="CTcpSocket.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CByteStream.cpp" />
     <ClCompile Include="CInitSocketLib.cpp" />
     <ClCompile Include="CLock.cpp" />
-    <ClCompile Include="CSem.cpp" />
+    <ClCompile Include="CTcpClient.cpp" />
+    <ClCompile Include="CTcpServer.cpp" />
     <ClCompile Include="CTcpSocket.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
